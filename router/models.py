@@ -54,7 +54,18 @@ class Stock(models.Model):
 
         return data
 
+
+class TrackedTickerManager(models.Manager):
+
+    def active_tickers(self):
+        """
+        Returns query set filtering active tickers
+        """
+        return self.filter(is_active=True)
+
 class TrackedTicker(models.Model):
     ticker = models.CharField(max_length=15, unique=True)
     is_active = models.BooleanField(default=True, db_default=True)
+
+    objects = TrackedTickerManager()
 
