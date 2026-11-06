@@ -1,11 +1,29 @@
+"""
+Management command for TrackedTicker operations.
+
+Provides a unified CLI interface to seed, add, deactivate, remove, and list
+monitored stock tickers within the database.
+
+Usage:
+    python manage.py tickers <action> [symbol]
+"""
+
 from django.core.management.base import BaseCommand, CommandError
 from router.models import TrackedTicker
 
 class Command(BaseCommand):
+    """
+    Django management command to manage tracked stock tickers.
+    """
     help = 'Manage tracked stock tickers in the database'
 
     def add_arguments(self, parser):
+        """
+        Define the positional and optional arguments for the CLI command.
 
+        Args:
+            parser (ArgumentParser): The standard argparse parser instance.
+        """
         parser.add_argument(
             'action',
             choices=['seed', 'add', 'deactivate', 'remove', 'list'],
@@ -20,7 +38,16 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **kwargs) -> None:
+        """
+        Execute the command, validate inputs, and route to the appropriate helper method.
 
+        Args:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments containing 'action' and 'symbol'.
+
+        Raises:
+            CommandError: If an action that requires a symbol is called without one.
+        """
         action = kwargs['action']
         symbol = kwargs.get('symbol')
 
@@ -43,8 +70,13 @@ class Command(BaseCommand):
         elif action == "remove":
             self._remove(clean_symbol)
 
-    def _seed(self):
+    def _seed(self) -> None:
+        """
+        Populate the database with a default list of stock tickers.
 
+        Uses set operations to efficiently deduplicate against existing database
+        records before executing a bulk_create.
+        """
         ticker_list = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL']
 
         # Creating a set to deduplicate:
@@ -76,10 +108,12 @@ class Command(BaseCommand):
             )
         )
 
-    def _list(self):
-
+    def _list(self) -> None:
+        """
+        Retrieve and print a list of all currently active tickers.
+        """
         active_tickers = list(
-            TrackedTicker.objects.filter(is_active=True).values_list('ticker', flat=True)
+            TrackedTicker.objects.active_tickers().values_list('ticker', flat=True)
         )
 
         if active_tickers:
@@ -95,8 +129,13 @@ class Command(BaseCommand):
                 )
             )
 
-    def _add_ticker(self, symbol: str):
+    def _add_ticker(self, symbol: str) -> None:
+        """
+        Register a new ticker in the database or ignore if it already exists.
 
+        Args:
+            symbol (str): The stock ticker symbol to add.
+        """
         ticker, created = TrackedTicker.objects.get_or_create(ticker=symbol)
 
         if created:
@@ -104,8 +143,15 @@ class Command(BaseCommand):
         else:
             self.stdout.write(self.style.WARNING(f'{symbol} is already being tracked.'))
 
-    def _deactivate(self, symbol:str):
+    def _deactivate(self, symbol:str) -> None:
+        """
+        Soft-delete a ticker by setting its active status to False.
 
+        Executes entirely at the database level via a bulk update query.
+
+        Args:
+            symbol (str): The stock ticker symbol to deactivate.
+        """
         updated_count = TrackedTicker.objects.filter(ticker=symbol).update(is_active=False)
 
         if updated_count > 0:
@@ -117,8 +163,13 @@ class Command(BaseCommand):
                 self.style.WARNING(f'Ticker symbol: {symbol} is not found in the database.')
             )
 
-    def _remove(self, symbol: str):
+    def _remove(self, symbol: str) -> None:
+        """
+        Hard-delete a ticker record from the database.
 
+        Args:
+            symbol (str): The stock ticker symbol to permanently remove.
+        """
         count, _ = TrackedTicker.objects.filter(ticker=symbol).delete()
 
         if count > 0:
