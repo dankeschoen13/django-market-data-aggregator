@@ -4,6 +4,22 @@ from decimal import Decimal
 import datetime
 
 # Create your models here.
+
+class StockManager(models.Manager):
+
+    def get_latest_data(self, ticker_symbol: str):
+        """
+        Pulls the latest market data of the specified ticker
+        from the database
+
+        Args:
+            ticker_symbol: the ticker of the stock data need to be pulled
+
+        Returns:
+            Stock | None: A Stock scalar or None
+        """
+        return self.filter(ticker=ticker_symbol).first()
+
 class Stock(models.Model):
 
     # Required cols
@@ -22,6 +38,8 @@ class Stock(models.Model):
     macd_line = models.FloatField(null=True, blank=True)
     ema_50 = models.FloatField(null=True, blank=True)
 
+    objects = StockManager()
+
     class Meta:
         constraints = [
             UniqueConstraint(
@@ -29,6 +47,7 @@ class Stock(models.Model):
                 name='unique_client_order_timestamp'
             )
         ]
+        ordering = ['-trade_date']
 
     def to_dict(self):
         data = {}

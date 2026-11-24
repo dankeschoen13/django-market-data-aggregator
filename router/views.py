@@ -1,7 +1,6 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import TrackedTicker
-from django.shortcuts import render
+from .models import Stock, TrackedTicker
 
 @api_view(['GET'])
 def index(request):
@@ -24,4 +23,21 @@ def get_available_tickers(request):
         "status": "success",
         "data": [stock.ticker for stock in active_tickers],
         "meta": {"count": len(active_tickers)}
+    }, status=200)
+
+
+@api_view(['GET'])
+def get_latest_metrics(request, ticker_symbol):
+
+    latest_data = Stock.objects.get_latest_data(ticker_symbol)
+
+    if not latest_data:
+        return Response({
+            "status": "error",
+            "message": f"No available data for ticker {ticker_symbol}"
+        }, status=404)
+
+    return Response({
+        "status": "success",
+        "data": latest_data.to_dict()
     }, status=200)
